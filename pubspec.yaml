@@ -36,15 +36,10 @@ dependencies:
   cupertino_icons: ^1.0.2
   file_picker: ^5.2.0
   fluttertoast: ^8.0.9
-  venice_core:
-    path: ../venice_core
-  channel_multiplexed_scheduler:
-    path: ../channel_multiplexed_scheduler
-  wifi_data_channel:
-    path: ../wifi_data_channel
-  qr_code_bootstrap_channel:
-    path: ../qr_code_bootstrap_channel
   permission_handler: ^10.0.1
+  qr_flutter: ^4.0.0
+  mobile_scanner: ^2.0.0
+  event: ^2.1.2
 
 dev_dependencies:
   flutter_test:

@@ -1,14 +1,10 @@
-import 'dart:io';
-
-import 'package:qr_code_bootstrap_channel/qr_code_bootstrap_channel.dart';
-import 'package:venice_core/channels/abstractions/bootstrap_channel.dart';
-import 'package:channel_multiplexed_scheduler/receiver/receiver.dart';
+import 'package:event/event.dart';
 import 'package:file_exchange_example_app/channelTypes/bootstrap_channel_type.dart';
 import 'package:file_exchange_example_app/channelTypes/data_channel_type.dart';
-import 'package:file_picker/file_picker.dart';
+import 'package:file_exchange_example_app/reciever.dart';
 import 'package:flutter/material.dart';
 import 'package:fluttertoast/fluttertoast.dart';
-import 'package:wifi_data_channel/wifi_data_channel.dart';
+import 'package:mobile_scanner/mobile_scanner.dart';
 
 class ReceiverView extends StatefulWidget {
   const ReceiverView({Key? key}) : super(key: key);
@@ -20,7 +16,9 @@ class ReceiverView extends StatefulWidget {
 class _ReceiverViewState extends State<ReceiverView> {
   BootstrapChannelType _bootstrapChannelType = BootstrapChannelType.qrCode;
   final List<DataChannelType> _dataChannelTypes = [];
-  Directory? _destination;
+  var dataRecievedEvent = Event<Value<String>>();
+
+
 
   void _setBootstrapChannelType(BootstrapChannelType type) {
     setState(() {
@@ -40,29 +38,10 @@ class _ReceiverViewState extends State<ReceiverView> {
 
   @override
   Widget build(BuildContext context) {
+    dataRecievedEvent + (args) => Fluttertoast.showToast(msg: "Data recieved: ${args?.value}");
     return Scaffold(
       body: Column(
         children: <Widget>[
-          Container(
-            margin: const EdgeInsets.only(top: 50),
-            child: ElevatedButton(
-                onPressed: () async {
-                  String? result = await FilePicker.platform.getDirectoryPath(dialogTitle: "test");
-                  if (result != null) {
-                    setState(() {
-                      _destination = Directory(result);
-                    });
-                  } else {
-                    debugPrint("User selected no file.");
-                  }
-                },
-                child: Text(
-                    _destination != null
-                        ? _destination!.uri.toString()
-                        : "Select file destination"
-                )
-            ),
-          ),
           Container(
             margin: const EdgeInsets.symmetric(vertical: 10, horizontal: 30),
             child: const Divider(),
@@ -97,7 +76,7 @@ class _ReceiverViewState extends State<ReceiverView> {
         ],
       ),
       bottomNavigationBar: ElevatedButton(
-        onPressed: _canReceiveFile() ? () => _startReceivingFile(context) : null,
+        onPressed: () => initReceiver(context),
         style: ButtonStyle(
             shape: MaterialStateProperty.all<RoundedRectangleBorder>(
                 const RoundedRectangleBorder( borderRadius: BorderRadius.zero )
@@ -105,41 +84,47 @@ class _ReceiverViewState extends State<ReceiverView> {
         ),
         child: Container(
           margin: const EdgeInsets.all(20),
-          child: const Text("Receive file"),
+          child: const Text("Receive data"),
         ),
       ),
     );
   }
 
-  bool _canReceiveFile() {
-    return _destination != null && _dataChannelTypes.isNotEmpty;
-  }
 
-  Future<void> _startReceivingFile(BuildContext context) async {
-    if (_destination == null) {
-      Fluttertoast.showToast(
-          msg: "Select a destination directory before starting file reception."
-      );
-      return;
-    }
-
+  Future<void> _startReceivingFile(BuildContext context, String channelId) async {
     Fluttertoast.showToast(
         msg: "Starting file reception..."
     );
 
-    BootstrapChannel bootstrapChannel = QrCodeBootstrapChannel(context);
-    Receiver receiver = Receiver(bootstrapChannel);
+    Receiver r = Receiver(channelId, dataRecievedEvent);
+  }
 
-    // add data channels
-    for (var type in _dataChannelTypes) {
-      switch(type) {
-        case DataChannelType.wifi:
-          receiver.useChannel( WifiDataChannel("wifi_data_channel") );
-          break;
-      }
-    }
+  Future<void> initReceiver(BuildContext ctx) async {
+    showModalBottomSheet(context: context, builder: (BuildContext cContext) {
+      return DraggableScrollableSheet(
+        initialChildSize: 1,
+        maxChildSize: 1,
+        builder: (dContext, controller) {
+          return Container(
+            color: Colors.red,
+            child: MobileScanner(fit: BoxFit.fill, onDetect: (code, arguments) {
+              String value = code.rawValue!;
+              List<String> words = value.split(";");
 
-    await receiver.receiveFile(_destination!);
-    Fluttertoast.showToast( msg: "File successfully received!" );
+              if (!["c", "f"].contains(words[0])) {
+                throw StateError("Received packet with unknown format.");
+              }
+
+              if (words[0] == "c") {
+                _startReceivingFile(context, words[1]);
+                Navigator.of(context).pop();
+              } else {
+                Fluttertoast.showToast(msg: "Error in QR code");
+              }
+            }),
+          );
+        },
+      );
+    });
   }
 }

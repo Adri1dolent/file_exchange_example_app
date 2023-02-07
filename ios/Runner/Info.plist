@@ -2,6 +2,15 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+    <key>NSLocalNetworkUsageDescription</key>
+    <string>Need acces to wifi settings for data transfer</string>
+    <key>NSBonjourServices</key>
+    <array>
+        <string>_mcc55._tcp</string>
+        <string>_mcc55._udp</string>
+    </array>
+    <key>NSCameraUsageDescription</key>
+    <string>autorisation camera</string>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
