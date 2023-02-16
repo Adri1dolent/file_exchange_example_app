@@ -8,11 +8,15 @@ class StringReciever: NSObject, ObservableObject {
     private let serviceBrowser: MCNearbyServiceBrowser
     private let session: MCSession
     private let sessionChannel:FlutterMethodChannel
+    private let urlToFolder:URL
     
     @Published var connectedPeer:MCPeerID?
     
-    init(sessionId:String, sessionChannel:FlutterMethodChannel) {
+    init(sessionId:String, urlToFolder:String, sessionChannel:FlutterMethodChannel) {
         self.serviceType = sessionId
+        
+        self.urlToFolder = URL(fileURLWithPath: urlToFolder)
+        
         self.sessionChannel = sessionChannel
         session = MCSession(peer: myPeerId, securityIdentity: nil, encryptionPreference: .none)
         serviceAdvertiser = MCNearbyServiceAdvertiser(peer: myPeerId, discoveryInfo: nil, serviceType: serviceType)
@@ -34,6 +38,7 @@ class StringReciever: NSObject, ObservableObject {
 extension StringReciever: MCNearbyServiceAdvertiserDelegate {
     func advertiser(_ advertiser: MCNearbyServiceAdvertiser, didReceiveInvitationFromPeer peerID: MCPeerID, withContext context: Data?, invitationHandler: @escaping (Bool, MCSession?) -> Void) {
         invitationHandler(true, session)
+        self.serviceAdvertiser.stopAdvertisingPeer()
     }
 }
 
@@ -57,11 +62,34 @@ extension StringReciever: MCSessionDelegate {
     }
 
     func session(_ session: MCSession, didStartReceivingResourceWithName resourceName: String, fromPeer peerID: MCPeerID, with progress: Progress) {
+        print("started to recieve file")
         
     }
     
     func session(_ session: MCSession, didFinishReceivingResourceWithName resourceName: String, fromPeer peerID: MCPeerID, at localURL: URL?, withError error: Error?) {
-        
+        //File downloaded by Session at localURL so must be moved to desired URL
+        print("file fully recieved")
+        do{
+            
+            let defaultDir = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
+            let defaultFileUrl = defaultDir.appendingPathComponent(resourceName)
+            let appDirFile = urlToFolder.appendingPathComponent(resourceName)
+            
+            //For the moment having rights isues while trying to copy the file to the user's desired location. Therefore copying the file to the default App Directory
+            
+            
+            /*if appDirFile.startAccessingSecurityScopedResource(){
+                try FileManager.default.copyItem(atPath: localURL!.path, toPath: defaultFileUrl.path)
+                try FileManager.default.copyItem(atPath: localURL!.path, toPath: appDirFile.path)
+                appDirFile.stopAccessingSecurityScopedResource()
+            }
+            else{*/
+                //try FileManager.default.copyItem(atPath: localURL!.path, toPath: defaultFileUrl.path)
+                try FileManager.default.copyItem(atPath: localURL!.path, toPath: appDirFile.path)
+            //}
+        } catch {
+            print(error.localizedDescription)
+        }
     }
     
     func session(_ session: MCSession, didReceive stream: InputStream, withName streamName: String, fromPeer peerID: MCPeerID) {

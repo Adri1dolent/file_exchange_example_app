@@ -29,6 +29,10 @@ class Sender{
     sessionChannel.invokeMethod("sendData", data);
   }
 
+  sendFile(String fileUrl){
+    sessionChannel.invokeMethod("sendFile", fileUrl);
+  }
+
   void showQrCode(BuildContext context) async{
     BuildContext? dialogContext;
 

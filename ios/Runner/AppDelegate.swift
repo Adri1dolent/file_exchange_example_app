@@ -26,7 +26,13 @@ import Flutter
                 stringSender?.send(str: call.arguments as? String ?? "data error")
                 
             case "createReciever":
-                stringReciever = StringReciever(sessionId: call.arguments as? String ?? "default", sessionChannel: sessionChannel)
+                guard let args = call.arguments as? [String: String] else {return}
+                print("arguments ::::::")
+                print(args)
+                stringReciever = StringReciever(sessionId: args["channelId"]!,urlToFolder: args["toFolderUrl"]!, sessionChannel: sessionChannel)
+                
+            case "sendFile":
+                stringSender?.sendFile(url: (call.arguments as? String)!)
                 
             default:
                 return

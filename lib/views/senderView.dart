@@ -4,6 +4,7 @@ import 'package:event/event.dart';
 import 'package:file_exchange_example_app/channelTypes/bootstrap_channel_type.dart';
 import 'package:file_exchange_example_app/channelTypes/data_channel_type.dart';
 import 'package:file_exchange_example_app/sender.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -20,6 +21,7 @@ class _SenderViewState extends State<SenderView> {
   BootstrapChannelType _bootstrapChannelType = BootstrapChannelType.qrCode;
   final List<DataChannelType> _dataChannelTypes = [];
   final textController = TextEditingController();
+  File? _file;
   Event<Value<String>> peerConnectedEvent = Event<Value<String>>();
 
   late Sender s;
@@ -63,9 +65,25 @@ class _SenderViewState extends State<SenderView> {
       body: Column(
         children: <Widget>[
           Container(
-            margin: const EdgeInsets.symmetric(vertical: 10, horizontal: 30),
-            child: TextField(
-                controller: textController,
+            margin: const EdgeInsets.only(top: 50),
+            child: ElevatedButton(
+                onPressed: () async {
+                  // Please note that selecting a file that does not belong to
+                  // current user will throw an error.
+                  FilePickerResult? result = await FilePicker.platform.pickFiles(withData: true);
+                  if (result != null) {
+                    setState(() {
+                      _file = File(result.files.single.path!);
+                    });
+                  } else {
+                    debugPrint("User selected no file.");
+                  }
+                },
+                child: Text(
+                    _file != null
+                        ? _file!.uri.pathSegments.last
+                        : "Select file to send"
+                )
             ),
           ),
           Container(
@@ -102,7 +120,7 @@ class _SenderViewState extends State<SenderView> {
         ],
       ),
       bottomNavigationBar: ElevatedButton(
-        onPressed: _canSendFile() ? () => _startSendingFile(context, textController.text) : null,
+        onPressed: _canSendFile() ? () => _startSendingFile(context) : null,
         style: ButtonStyle(
             shape: MaterialStateProperty.all<RoundedRectangleBorder>(
                 const RoundedRectangleBorder( borderRadius: BorderRadius.zero )
@@ -117,12 +135,12 @@ class _SenderViewState extends State<SenderView> {
   }
 
   bool _canSendFile() {
-    return textController.text.isNotEmpty && _dataChannelTypes.isNotEmpty;
+    return _file != null && _dataChannelTypes.isNotEmpty;
   }
 
-  Future<void> _startSendingFile(BuildContext context, String data) async {
+  Future<void> _startSendingFile(BuildContext context) async {
+    print(_file?.uri);
     s = Sender(peerConnectedEvent);
-    this.data = data;
     print(s.mCChannelId);
     s.showQrCode(context);
     Fluttertoast.showToast( msg: "Waiting for a reciever...", timeInSecForIosWeb: 2);
@@ -130,7 +148,8 @@ class _SenderViewState extends State<SenderView> {
 
   _onPeerConnected(){
     Fluttertoast.showToast(msg: "Peer Connected");
-    s.sendData(data);
+    //s.sendData(data);
+    s.sendFile(_file!.path);
     sleep(const Duration(seconds:1));
     Fluttertoast.showToast(msg: "Data sent");
   }

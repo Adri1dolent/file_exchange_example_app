@@ -17,15 +17,15 @@ class StringSender: NSObject, ObservableObject {
         session = MCSession(peer: myPeerId, securityIdentity: nil, encryptionPreference: .none)
         serviceAdvertiser = MCNearbyServiceAdvertiser(peer: myPeerId, discoveryInfo: nil, serviceType: serviceType)
         serviceBrowser = MCNearbyServiceBrowser(peer: myPeerId, serviceType: serviceType)
-
+        
         super.init()
-
+        
         session.delegate = self
         serviceBrowser.delegate = self
-
+        
         serviceBrowser.startBrowsingForPeers()
     }
-
+    
     deinit {
         serviceBrowser.stopBrowsingForPeers()
     }
@@ -40,12 +40,38 @@ class StringSender: NSObject, ObservableObject {
         }
     }
     
+    func sendFile(url: String){
+        
+        let urlObj = URL(fileURLWithPath: url)
+        let fname = urlObj.lastPathComponent
+        let appDir = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
+        let appDirFile = appDir.appendingPathComponent(fname)
+        if FileManager.default.fileExists(atPath: appDirFile.path){
+            print("File alredy copied in app dir")
+        }
+        else{
+            do{
+                print("file path :::: ", urlObj)
+                print("folder path ::::", appDir)
+                try FileManager.default.copyItem(at: urlObj, to: appDirFile)
+            } catch {
+                print("erreur :::: ",error.localizedDescription)
+                return
+            }
+        }
+        
+        print("just omg")
+        if !session.connectedPeers.isEmpty {
+            session.sendResource(at: appDirFile, withName: fname, toPeer: connectedPeer!)
+        }
+    }
 }
+    
 
 extension StringSender: MCNearbyServiceBrowserDelegate {
     
     func browser(_ browser: MCNearbyServiceBrowser, foundPeer peerID: MCPeerID, withDiscoveryInfo info: [String: String]?) {
-        if(self.connectedPeer == nil){
+        if(self.connectedPeer == nil ){
             browser.invitePeer(peerID, to: session, withContext: nil, timeout: 10)
         }
     }
@@ -58,9 +84,12 @@ extension StringSender: MCNearbyServiceBrowserDelegate {
 
 extension StringSender: MCSessionDelegate {
     func session(_ session: MCSession, peer peerID: MCPeerID, didChange state: MCSessionState) {
-        DispatchQueue.main.async {
-            self.connectedPeer = session.connectedPeers.first
-            self.sessionChannel.invokeMethod("onPeerConnected", arguments: peerID.displayName)
+            DispatchQueue.main.async {
+                self.connectedPeer = session.connectedPeers.first
+                if(state == MCSessionState.connected){
+                    print("wtfffff")
+                    self.sessionChannel.invokeMethod("onPeerConnected", arguments: peerID.displayName)
+            }
         }
     }
 

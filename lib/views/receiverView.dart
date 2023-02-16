@@ -1,7 +1,10 @@
+import 'dart:io';
+
 import 'package:event/event.dart';
 import 'package:file_exchange_example_app/channelTypes/bootstrap_channel_type.dart';
 import 'package:file_exchange_example_app/channelTypes/data_channel_type.dart';
 import 'package:file_exchange_example_app/reciever.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
@@ -17,8 +20,7 @@ class _ReceiverViewState extends State<ReceiverView> {
   BootstrapChannelType _bootstrapChannelType = BootstrapChannelType.qrCode;
   final List<DataChannelType> _dataChannelTypes = [];
   var dataRecievedEvent = Event<Value<String>>();
-
-
+  Directory? _destination;
 
   void _setBootstrapChannelType(BootstrapChannelType type) {
     setState(() {
@@ -42,6 +44,26 @@ class _ReceiverViewState extends State<ReceiverView> {
     return Scaffold(
       body: Column(
         children: <Widget>[
+          Container(
+            margin: const EdgeInsets.only(top: 50),
+            child: ElevatedButton(
+                onPressed: () async {
+                  String? result = await FilePicker.platform.getDirectoryPath(dialogTitle: "test");
+                  if (result != null) {
+                    setState(() {
+                      _destination = Directory(result);
+                    });
+                  } else {
+                    debugPrint("User selected no file.");
+                  }
+                },
+                child: Text(
+                    _destination != null
+                        ? _destination!.uri.toString()
+                        : "Select file destination"
+                )
+            ),
+          ),
           Container(
             margin: const EdgeInsets.symmetric(vertical: 10, horizontal: 30),
             child: const Divider(),
@@ -76,7 +98,7 @@ class _ReceiverViewState extends State<ReceiverView> {
         ],
       ),
       bottomNavigationBar: ElevatedButton(
-        onPressed: () => initReceiver(context),
+        onPressed: _canReceiveFile() ? () => initReceiver(context) : null,
         style: ButtonStyle(
             shape: MaterialStateProperty.all<RoundedRectangleBorder>(
                 const RoundedRectangleBorder( borderRadius: BorderRadius.zero )
@@ -90,13 +112,16 @@ class _ReceiverViewState extends State<ReceiverView> {
     );
   }
 
+  bool _canReceiveFile() {
+    return _destination != null && _dataChannelTypes.isNotEmpty;
+  }
 
   Future<void> _startReceivingFile(BuildContext context, String channelId) async {
     Fluttertoast.showToast(
         msg: "Starting file reception..."
     );
-
-    Receiver r = Receiver(channelId, dataRecievedEvent);
+    print(_destination!.path);
+    Receiver r = Receiver(channelId, dataRecievedEvent, _destination!.path);
   }
 
   Future<void> initReceiver(BuildContext ctx) async {
